@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>K‑Map & Hamming Toolkit Pro</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="description" content="Advanced K-Map solver, Hamming codes, Quine-McCluskey, and gate diagrams" />
+  <meta name="theme-color" content="#050711" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="KMapTool" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%234f8cff'/><text x='96' y='130' font-size='100' font-weight='bold' fill='%23050711' text-anchor='middle'>K</text></svg>" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .pwa-banner {
+      display: none;
+      background: linear-gradient(135deg, #3553ff, #8f5bff);
+      color: #fdfdff;
+      padding: 10px 12px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      font-size: 0.85rem;
+      position: relative;
+      z-index: 10;
+    }
+    .pwa-banner.show {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .pwa-banner button {
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      color: #fdfdff;
+      padding: 4px 10px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      margin-left: 8px;
+    }
+    .method-info {
+      background: rgba(79, 140, 255, 0.08);
+      border-left: 3px solid #4f8cff;
+      padding: 6px 8px;
+      margin-top: 6px;
+      font-size: 0.8rem;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <header class="app-header">
+    <h1>K‑Map & Hamming Toolkit Pro</h1>
+    <p class="subtitle">Quine-McCluskey, gate diagrams, Espresso comparison, offline support</p>
+  </header>
+
+  <main class="app-container">
+    <div id="pwa-banner" class="pwa-banner">
+      <span>📱 Install as app for offline use</span>
+      <button id="install-btn">Install</button>
+      <button onclick="document.getElementById('pwa-banner').style.display='none'">Dismiss</button>
+    </div>
+
+    <section class="mode-switch">
+      <button id="mode-kmap" class="mode-btn active">K‑Map Solver</button>
+      <button id="mode-hamming" class="mode-btn">Hamming Code</button>
+    </section>
+
+    <!-- K‑MAP PANEL -->
+    <section id="kmap-panel" class="panel visible">
+      <div class="panel-header">
+        <h2>Karnaugh Map Solver</h2>
+      </div>
+
+      <div class="panel-grid">
+        <!-- Left: configuration -->
+        <div class="card">
+          <h3>Configuration</h3>
+          <label class="field-label">
+            Number of variables
+            <select id="var-count">
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4" selected>4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+              <option value="7">7</option>
+              <option value="8">8</option>
+              <option value="9">9</option>
+              <option value="10">10</option>
+            </select>
+          </label>
+
+          <label class="field-label">
+            Simplification method
+            <select id="simplify-method">
+              <option value="kmap" selected>K‑map (visual, ≤6 vars)</option>
+              <option value="qmc">Quine–McCluskey (all vars)</option>
+              <option value="auto">Auto (K-map if ≤6, else QMC)</option>
+            </select>
+          </label>
+          <div class="method-info" id="method-info">K-map provides visual grouping for 2–6 variables</div>
+
+          <label class="field-label">
+            Input type
+            <select id="input-type">
+              <option value="grid" selected>Interactive grid</option>
+              <option value="minterms">Minterm list</option>
+              <option value="maxterms">Maxterm list</option>
+              <option value="truth">Truth table import</option>
+            </select>
+          </label>
+
+          <div id="minterm-input-wrapper" class="field-block hidden">
+            <label class="field-label">
+              Minterms (comma‑separated)
+              <input id="minterm-input" type="text" placeholder="e.g. 1,3,5,7" />
+            </label>
+            <label class="field-label">
+              Don't‑cares
+              <input id="dc-input" type="text" placeholder="e.g. 2,4,6" />
+            </label>
+          </div>
+
+          <div id="truth-input-wrapper" class="field-block hidden">
+            <label class="field-label">
+              Truth table (one row per line: inputs,output)
+              <textarea id="truth-input" rows="4" placeholder="000 0&#10;001 1&#10;..."></textarea>
+            </label>
+          </div>
+
+          <button id="solve-btn" class="primary-btn">Solve & Simplify</button>
+          <button id="clear-btn" class="secondary-btn">Clear</button>
+        </div>
+
+        <!-- Center: K‑map -->
+        <div class="card">
+          <h3>K‑Map Visualization</h3>
+          <div id="kmap-wrapper">
+            <!-- Filled dynamically -->
+          </div>
+          <p class="hint">
+            Tap cells to toggle 0 → 1 → X (don't‑care). Long‑press on mobile if tap is cramped.
+          </p>
+        </div>
+
+        <!-- Right: results & narration -->
+        <div class="card">
+          <h3>Solution</h3>
+          <div id="solution-output" class="solution-block">
+            <p><strong>SOP:</strong> <span id="sop-output">–</span></p>
+            <p><strong>POS:</strong> <span id="pos-output">–</span></p>
+            <p><strong>Implicants:</strong> <span id="implicant-output">–</span></p>
+            <p><strong>Method:</strong> <span id="method-used">–</span></p>
+          </div>
+
+          <h3>Gate-Level Diagram</h3>
+          <div id="gate-diagram-wrapper" style="margin: 6px 0; max-height: 220px; overflow-y: auto;">
+            <svg id="gate-diagram" width="100%" height="150" style="border: 1px solid rgba(110,126,190,0.4); border-radius: 6px;"></svg>
+          </div>
+
+          <h3>K‑Map Steps</h3>
+          <ol id="steps-output" class="steps-list"></ol>
+
+          <h3>HDL Export</h3>
+          <div class="hdl-block">
+            <label class="field-label">
+              Language
+              <select id="hdl-lang">
+                <option value="verilog">Verilog</option>
+                <option value="vhdl">VHDL</option>
+              </select>
+            </label>
+            <pre id="hdl-output" class="code-block">// Solve first to generate HDL</pre>
+          </div>
+
+          <h3>Espresso Comparison</h3>
+          <p style="font-size: 0.8rem; color: var(--text-soft);">Export your input in PLA format for external Espresso minimizer:</p>
+          <button id="espresso-btn" class="secondary-btn">Show Espresso PLA</button>
+          <pre id="espresso-output" class="code-block" style="font-size: 0.75rem; max-height: 150px; overflow-y: auto;">–</pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- HAMMING PANEL -->
+    <section id="hamming-panel" class="panel">
+      <div class="panel-header">
+        <h2>Hamming Code Generator & Checker</h2>
+      </div>
+
+      <div class="panel-grid">
+        <!-- Left: generator -->
+        <div class="card">
+          <h3>Generator</h3>
+
+          <label class="field-label">
+            Parity type
+            <select id="h-parity-type">
+              <option value="even" selected>Even (extended Hamming)</option>
+              <option value="odd">Odd (standard Hamming)</option>
+            </select>
+          </label>
+
+          <label class="field-label">
+            Data bits (binary)
+            <input id="h-data" type="text" placeholder="e.g. 1011" />
+          </label>
+
+          <button id="h-generate" class="primary-btn">Generate code</button>
+
+          <div class="h-output">
+            <p><strong>Parity mode:</strong> <span id="h-gen-mode">–</span></p>
+            <p><strong>Encoded bits (LSB last):</strong></p>
+            <pre id="h-encoded" class="code-block">–</pre>
+
+            <p><strong>Bit layout (d=data, p=parity):</strong></p>
+            <pre id="h-layout" class="code-block">–</pre>
+
+            <p><strong>Parity coverage table:</strong></p>
+            <pre id="h-coverage" class="code-block">–</pre>
+          </div>
+        </div>
+
+        <!-- Center: checker -->
+        <div class="card">
+          <h3>Error Checker</h3>
+
+          <label class="field-label">
+            Received codeword (binary)
+            <input id="h-received" type="text" placeholder="e.g. 11001011" />
+          </label>
+
+          <label class="field-label">
+            Expected parity
+            <select id="h-check-parity">
+              <option value="auto" selected>Auto‑detect</option>
+              <option value="even">Even (extended)</option>
+              <option value="odd">Odd (standard)</option>
+            </select>
+          </label>
+
+          <button id="h-check" class="primary-btn">Check & classify</button>
+
+          <div class="h-output">
+            <p><strong>Detected type:</strong> <span id="h-det-type">–</span></p>
+            <p><strong>Syndrome (binary):</strong> <span id="h-syndrome">–</span></p>
+            <p><strong>Overall parity status:</strong> <span id="h-overall">–</span></p>
+            <p><strong>Error classification:</strong> <span id="h-classification">–</span></p>
+            <p><strong>Corrected codeword:</strong></p>
+            <pre id="h-corrected" class="code-block">–</pre>
+          </div>
+        </div>
+
+        <!-- Right: explanation -->
+        <div class="card">
+          <h3>Format & Notes</h3>
+
+          <p class="note">
+            Parity bits are placed at power‑of‑two positions p₁, p₂, p₄, p₈, p₁₆, … (1‑indexed). Data bits fill the remaining positions.
+          </p>
+
+          <p class="note">
+            For 7‑bit standard Hamming (odd parity) with 4 data bits:
+          </p>
+          <pre class="code-block">
+Bit index:   1   2   3   4   5   6   7
+Role:        p1  p2  d1  p4  d2  d3  d4
+          </pre>
+
+          <p class="note">
+            For extended (even) Hamming with overall parity p₀, the MSB is p₀:
+          </p>
+          <pre class="code-block">
+Bit index:   1   2   3   4   5   6   7   8
+Role:        p1  p2  d1  p4  d2  d3  d4  p0
+          </pre>
+
+          <p class="note">
+            Coverage is displayed as a table: each pᵢ row shows ✓ under the bit positions it checks.
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <p>💻 Designed for mobile & desktop • 📱 Add to home‑screen for PWA • 🔌 Works offline after first load</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
