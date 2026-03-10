@@ -101,20 +101,20 @@ function buildKmap() {
   const colVars = [];
 
   if (v === 2) {
-    colVars.push(varNames[0]);
-    rowVars.push(varNames[1]);
+    rowVars.push(varNames[0]);
+    colVars.push(varNames[1]);
   } else if (v === 3) {
-    colVars.push(varNames[0], varNames[1]);
-    rowVars.push(varNames[2]);
+    rowVars.push(varNames[0], varNames[1]);
+    colVars.push(varNames[2]);
   } else if (v === 4) {
-    colVars.push(varNames[0], varNames[1]);
-    rowVars.push(varNames[2], varNames[3]);
+    rowVars.push(varNames[0], varNames[1]);
+    colVars.push(varNames[2], varNames[3]);
   } else if (v === 5) {
-    colVars.push(varNames[0], varNames[1], varNames[2]);
-    rowVars.push(varNames[3], varNames[4]);
+    rowVars.push(varNames[0], varNames[1], varNames[2]);
+    colVars.push(varNames[3], varNames[4]);
   } else if (v === 6) {
-    colVars.push(varNames[0], varNames[1], varNames[2]);
-    rowVars.push(varNames[3], varNames[4], varNames[5]);
+    rowVars.push(varNames[0], varNames[1], varNames[2]);
+    colVars.push(varNames[3], varNames[4], varNames[5]);
   }
 
   const colBits = colVars.length;
